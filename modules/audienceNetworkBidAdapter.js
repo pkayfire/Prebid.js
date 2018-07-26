@@ -194,7 +194,7 @@ const buildRequests = bids => {
  * @returns {Array<Object>} A list of bid response objects
  */
 const interpretResponse = ({ body }, { adformats, requestIds, sizes }) => {
-  const ttl = Number(config.getConfig().bidderTimeout);
+  const ttl = 600;
 
   const { bids = {} } = body;
   return Object.keys(bids)
