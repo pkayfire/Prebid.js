@@ -656,8 +656,8 @@ export const spec = {
           creativeId: ad.creative_id || `${ad.network || ''}-${ad.advertiser || ''}`,
           cpm: ad.cpm || 0,
           dealId: ad.deal,
-          ttl: 300, // 5 minutes
-          netRevenue: config.getConfig('rubicon.netRevenue') !== false, // If anything other than false, netRev is true
+          ttl: 60, // 1 minutes
+          netRevenue: config.getConfig('rubicon.netRevenue') !== false,
           rubicon: {
             advertiserId: ad.advertiser, networkId: ad.network
           },
