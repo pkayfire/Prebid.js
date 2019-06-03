@@ -31,7 +31,7 @@ const NATIVE_MAPPING = {
   displayUrl: 'displayurl'
 };
 const SOURCE = 'pbjs';
-const MAX_IMPS_PER_REQUEST = 15;
+const MAX_IMPS_PER_REQUEST = 10;
 const mappingFileUrl = '//acdn.adnxs.com/prebid/appnexus-mapping/mappings.json';
 
 export const spec = {
