@@ -6,6 +6,7 @@ import { formatQS } from '../src/url';
 import { generateUUID, getTopWindowUrl, convertTypes } from '../src/utils';
 import findIndex from 'core-js/library/fn/array/find-index';
 import includes from 'core-js/library/fn/array/includes';
+import * as utils from '../src/utils';
 
 const code = 'audienceNetwork';
 const currency = 'USD';
@@ -19,6 +20,7 @@ const videoTtl = 3600;
 const platver = '$prebid.version$';
 const platform = '241394079772386';
 const adapterver = '1.3.0';
+const maxImpsPerRequest = 10;
 
 /**
  * Does this bid request contain valid parameters?
@@ -188,12 +190,12 @@ const getTopWindowUrlEncoded = () => encodeURIComponent(getTopWindowUrl());
  */
 const buildRequests = bids => {
   // Build lists of placementids, adformats, sizes and SDK versions
-  const placementids = [];
-  const adformats = [];
-  const sizes = [];
-  const sdk = [];
-  const platforms = [];
-  const requestIds = [];
+  let placementids = [];
+  let adformats = [];
+  let sizes = [];
+  let sdk = [];
+  let platforms = [];
+  let requestIds = [];
 
   bids.forEach(bid => bid.sizes
     .map(flattenSize)
@@ -216,24 +218,63 @@ const buildRequests = bids => {
   const pageurl = getTopWindowUrlEncoded();
   const platform = findPlatform(platforms);
   const cb = generateUUID();
-  const search = {
-    placementids,
-    adformats,
-    testmode,
-    pageurl,
-    sdk,
-    adapterver,
-    platform,
-    platver,
-    cb
-  };
-  const video = findIndex(adformats, isVideo);
-  if (video !== -1) {
-    [search.playerwidth, search.playerheight] = expandSize(sizes[video]);
-  }
-  const data = formatQS(search);
+  let search = [];
+  if (bids.length > maxImpsPerRequest) {
+    placementids = utils.chunk(placementids, maxImpsPerRequest);
+    adformats = utils.chunk(adformats, maxImpsPerRequest);
+    sizes = utils.chunk(sizes, maxImpsPerRequest);
+    sdk = utils.chunk(sdk, maxImpsPerRequest);
+    platforms = utils.chunk(platforms, maxImpsPerRequest);
+    requestIds = utils.chunk(requestIds, maxImpsPerRequest);
 
-  return [{ adformats, data, method, requestIds, sizes, url }];
+    search = [];
+    placementids.forEach(function (placementIdChunk, index) {
+      search.push({
+        placementids: placementids[index],
+        adformats: adformats[index],
+        testmode: testmode,
+        pageurl: pageurl,
+        sdk: sdk[index],
+        adapterver: adapterver,
+        platform: platform,
+        platver: platver,
+        cb: cb
+      })
+    });
+
+  } else {
+    search = [{
+      placementids: placementids,
+      adformats: adformats,
+      testmode: testmode,
+      pageurl: pageurl,
+      sdk: sdk,
+      adapterver: adapterver,
+      platform: platform,
+      platver: platver,
+      cb: cb
+    }];
+  }
+
+  // not needed until outstream video supported
+  // const video = findIndex(adformats, isVideo);
+  // if (video !== -1) {
+  //   [search.playerwidth, search.playerheight] = expandSize(sizes[video]);
+  // }
+
+  let requests = [];
+  search.forEach(function (searchChunk, index) {
+    requests.push({
+      adformats: adformats[index],
+      data: formatQS(searchChunk),
+      method: method,
+      requestIds: requestIds[index],
+      sizes: sizes[index],
+      url: url
+    });
+  });
+
+  return requests;
 };
 
 /**
