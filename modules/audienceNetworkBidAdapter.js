@@ -268,8 +268,8 @@ const buildRequests = bids => {
       adformats: adformats[index],
       data: formatQS(searchChunk),
       method: method,
-      requestIds: requestIds[index],
-      sizes: sizes[index],
+      requestIds: bids.length > maxImpsPerRequest ? requestIds[index] : requestIds,
+      sizes: bids.length > maxImpsPerRequest ? sizes[index] : sizes,
       url: url
     });
   });
