@@ -265,7 +265,7 @@ const buildRequests = bids => {
   let requests = [];
   search.forEach(function (searchChunk, index) {
     requests.push({
-      adformats: adformats[index],
+      adformats: bids.length > maxImpsPerRequest ? adformats[index] : adformats,
       data: formatQS(searchChunk),
       method: method,
       requestIds: bids.length > maxImpsPerRequest ? requestIds[index] : requestIds,
