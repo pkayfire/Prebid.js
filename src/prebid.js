@@ -190,6 +190,24 @@ function getBids(type) {
     .reduce((a, b) => Object.assign(a, b), {});
 }
 
+// Custom added logic
+function getAllBidResponses(type) {
+  const responses = auctionManager[type]()
+    .filter(utils.bind.call(adUnitsFilter, this, auctionManager.getAdUnitCodes()));
+
+  return JSON.parse(JSON.stringify(responses
+    .map(bid => bid.adUnitCode)
+    .filter(uniques).map(adUnitCode => responses
+      .filter(bid => bid.adUnitCode === adUnitCode))
+    .filter(bids => bids && bids[0] && bids[0].adUnitCode)
+    .map(bids => {
+      return {
+        [bids[0].adUnitCode]: { bids }
+      };
+    })
+    .reduce((a, b) => Object.assign(a, b), {}))); 
+}
+
 /**
  * This function returns the bids requests involved in an auction but not bid on
  * @alias module:pbjs.getNoBids
@@ -211,6 +229,10 @@ $$PREBID_GLOBAL$$.getBidResponses = function () {
   utils.logInfo('Invoking $$PREBID_GLOBAL$$.getBidResponses', arguments);
   return getBids('getBidsReceived');
 };
+
+$$PREBID_GLOBAL$$.getAllBidResponses  = function () {
+  return getAllBidResponses('getBidsReceived');
+}
 
 /**
  * Returns bidResponses for the specified adUnitCode
