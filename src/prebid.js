@@ -313,6 +313,10 @@ $$PREBID_GLOBAL$$.setTargetingForAst = function(adUnitCodes) {
   events.emit(SET_TARGETING, targeting.getAllTargeting());
 };
 
+$$PREBID_GLOBAL$$.setCustomBidUseFunction = function(customBidUseFunction) {
+  targeting.setCustomBidUseFunction(customBidUseFunction)
+}
+
 function emitAdRenderFail({ reason, message, bid, id }) {
   const data = { reason, message };
   if (bid) data.bid = bid;
@@ -880,7 +884,7 @@ $$PREBID_GLOBAL$$.processQueue = function() {
 };
 
 // Sbly Prebid Modifications
-$$PREBID_GLOBAL$$.getAllBidResponses  = function () {
+$$PREBID_GLOBAL$$.getAllBidResponses = function () {
   return getAllBidResponses('getBidsReceived');
 }
 
@@ -898,7 +902,7 @@ function getAllBidResponses(type) {
         [bids[0].adUnitCode]: { bids }
       };
     })
-    .reduce((a, b) => Object.assign(a, b), {}))); 
+    .reduce((a, b) => Object.assign(a, b), {})));
 }
 
 export default $$PREBID_GLOBAL$$;
