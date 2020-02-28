@@ -241,7 +241,6 @@ const buildRequests = bids => {
         cb: cb
       })
     });
-
   } else {
     search = [{
       placementids: placementids,
