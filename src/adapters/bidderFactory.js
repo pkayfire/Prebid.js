@@ -12,7 +12,9 @@ import { ajax } from '../ajax';
 import { logWarn, logError, parseQueryStringParameters, delayExecution, parseSizesInput, getBidderRequest, flatten, uniques, timestamp, setDataInLocalStorage, getDataFromLocalStorage, deepAccess, isArray } from '../utils';
 import { ADPOD } from '../mediaTypes';
 import { getHook } from '../hook';
+import { useFakeGeneratedBids, fakeBidResponsesForBidRequest } from '../modifications/bidderFactoryDebug.js';
 
+import { sblyLog } from '../utils.js';
 /**
  * This file aims to support Adapters during the Prebid 0.x -> 1.x transition.
  *
@@ -204,6 +206,15 @@ export function newBidder(spec) {
         }
       });
 
+      if (useFakeGeneratedBids()) {
+        sblyLog(`Using Fake Bids!!!`);
+        const onResponse = delayExecution(configEnabledCallback(afterAllResponses), 1);
+        const fakeBids = fakeBidResponsesForBidRequest(bidderRequest);
+        fakeBids.forEach(addBidUsingRequestMap);
+        onResponse(fakeBids);
+        return;
+      }
+
       let requests = spec.buildRequests(validBidRequests, bidderRequest);
       if (!requests || requests.length === 0) {
         afterAllResponses();
@@ -218,6 +229,19 @@ export function newBidder(spec) {
       // we need to rig up a function which only executes after all the requests have been responded.
       const onResponse = delayExecution(configEnabledCallback(afterAllResponses), requests.length)
       requests.forEach(processRequest);
+
+      function addBidUsingRequestMap(bid) {
+        const bidRequest = bidRequestMap[bid.requestId];
+        if (bidRequest) {
+          // creating a copy of original values as cpm and currency are modified later
+          bid.originalCpm = bid.cpm;
+          bid.originalCurrency = bid.currency;
+          const prebidBid = Object.assign(createBid(CONSTANTS.STATUS.GOOD, bidRequest), bid);
+          addBidWithCode(bidRequest.adUnitCode, prebidBid);
+        } else {
+          logWarn(`Bidder ${spec.code} made bid for unknown request ID: ${bid.requestId}. Ignoring.`);
+        }
+      }
 
       function formatGetParameters(data) {
         if (data) {
@@ -297,19 +321,6 @@ export function newBidder(spec) {
             }
           }
           onResponse(bids);
-
-          function addBidUsingRequestMap(bid) {
-            const bidRequest = bidRequestMap[bid.requestId];
-            if (bidRequest) {
-              // creating a copy of original values as cpm and currency are modified later
-              bid.originalCpm = bid.cpm;
-              bid.originalCurrency = bid.currency;
-              const prebidBid = Object.assign(createBid(CONSTANTS.STATUS.GOOD, bidRequest), bid);
-              addBidWithCode(bidRequest.adUnitCode, prebidBid);
-            } else {
-              logWarn(`Bidder ${spec.code} made bid for unknown request ID: ${bid.requestId}. Ignoring.`);
-            }
-          }
 
           function headerParser(xmlHttpResponse) {
             return {
