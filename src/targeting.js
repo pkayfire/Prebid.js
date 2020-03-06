@@ -4,7 +4,7 @@ import { NATIVE_TARGETING_KEYS } from './native';
 import { auctionManager } from './auctionManager';
 import { sizeSupported } from './sizeMapping';
 import { ADPOD } from './mediaTypes';
-import { getWinningBidsWithSharing } from './modifications/sblyReuseBidsAcrossDepth';
+import { getWinningBidsWithSharing } from './sbly/sblyModifications.js';
 
 import includes from 'core-js/library/fn/array/includes';
 
@@ -104,7 +104,6 @@ export function sortByDealAndPriceBucket(a, b) {
 export function newTargeting(auctionManager) {
   let targeting = {};
   let latestAuctionForAdUnit = {};
-  let customBidUseFunction;
 
   targeting.setLatestAuctionForAdUnit = function(adUnitCode, auctionId) {
     latestAuctionForAdUnit[adUnitCode] = auctionId;
@@ -386,15 +385,11 @@ export function newTargeting(auctionManager) {
       .reduce(getHighestCpm));
 
     console.time('getWinningBids')
-    const withSharingWinningBids = getWinningBidsWithSharing(originalWinningBids, adUnitCodes, bidsReceived, customBidUseFunction);
+    const withSharingWinningBids = getWinningBidsWithSharing(originalWinningBids, adUnitCodes, bidsReceived);
     console.timeEnd('getWinningBids')
 
     return withSharingWinningBids;
   };
-
-  targeting.setCustomBidUseFunction = function(canUseBidForAdUnitCodeFunction) {
-    customBidUseFunction = canUseBidForAdUnitCodeFunction;
-  }
 
   /**
    * @param  {(string|string[])} adUnitCode adUnitCode or array of adUnitCodes

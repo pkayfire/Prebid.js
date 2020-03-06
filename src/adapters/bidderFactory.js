@@ -12,9 +12,10 @@ import { ajax } from '../ajax';
 import { logWarn, logError, parseQueryStringParameters, delayExecution, parseSizesInput, getBidderRequest, flatten, uniques, timestamp, setDataInLocalStorage, getDataFromLocalStorage, deepAccess, isArray } from '../utils';
 import { ADPOD } from '../mediaTypes';
 import { getHook } from '../hook';
-import { useFakeGeneratedBids, fakeBidResponsesForBidRequest } from '../modifications/bidderFactoryDebug.js';
 
-import { sblyLog } from '../utils.js';
+import { sblyLog } from '../sbly/sblyUtils.js';
+import { useFakeGeneratedBids, fakeBidResponsesForBidRequest } from '../sbly/sblyModifications.js';
+
 /**
  * This file aims to support Adapters during the Prebid 0.x -> 1.x transition.
  *
