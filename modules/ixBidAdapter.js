@@ -325,6 +325,14 @@ function buildRequest(validBidRequests, bidderRequest, impressions, version) {
   };
 }
 
+function chunkArrayInGroups(arr, size) {
+  var myArray = [];
+  for(var i = 0; i < arr.length; i += size) {
+    myArray.push(arr.slice(i, i+size));
+  }
+  return myArray;
+}
+
 export const spec = {
 
   code: BIDDER_CODE,
@@ -380,37 +388,40 @@ export const spec = {
    * @param  {object} bidderRequest    A object contains bids and other info like gdprConsent.
    * @return {object}                  Info describing the request to the server.
    */
-  buildRequests: function (validBidRequests, bidderRequest) {
-    let reqs = [];
-    let bannerImps = [];
-    let videoImps = [];
-    let validBidRequest = null;
+  buildRequests: function (allValidBidRequests, bidderRequest) {
+    const chunkedValidBidRequests = chunkArrayInGroups(allValidBidRequests, 15);
+    return Array.prototype.concat.apply([], chunkedValidBidRequests.map(validBidRequests => {
+      let reqs = [];
+      let bannerImps = [];
+      let videoImps = [];
+      let validBidRequest = null;
 
-    for (let i = 0; i < validBidRequests.length; i++) {
-      validBidRequest = validBidRequests[i];
+      for (let i = 0; i < validBidRequests.length; i++) {
+        validBidRequest = validBidRequests[i];
 
-      if (validBidRequest.mediaType === VIDEO || utils.deepAccess(validBidRequest, 'mediaTypes.video')) {
-        if (validBidRequest.mediaType === VIDEO || includesSize(validBidRequest.mediaTypes.video.playerSize, validBidRequest.params.size)) {
-          videoImps.push(bidToVideoImp(validBidRequest));
-        } else {
-          utils.logError('Bid size is not included in video playerSize')
+        if (validBidRequest.mediaType === VIDEO || utils.deepAccess(validBidRequest, 'mediaTypes.video')) {
+          if (validBidRequest.mediaType === VIDEO || includesSize(validBidRequest.mediaTypes.video.playerSize, validBidRequest.params.size)) {
+            videoImps.push(bidToVideoImp(validBidRequest));
+          } else {
+            utils.logError('Bid size is not included in video playerSize')
+          }
+        }
+
+        if (validBidRequest.mediaType === BANNER || utils.deepAccess(validBidRequest, 'mediaTypes.banner') ||
+            (!validBidRequest.mediaType && !validBidRequest.mediaTypes)) {
+          bannerImps.push(bidToBannerImp(validBidRequest));
         }
       }
 
-      if (validBidRequest.mediaType === BANNER || utils.deepAccess(validBidRequest, 'mediaTypes.banner') ||
-          (!validBidRequest.mediaType && !validBidRequest.mediaTypes)) {
-        bannerImps.push(bidToBannerImp(validBidRequest));
+      if (bannerImps.length > 0) {
+        reqs.push(buildRequest(validBidRequests, bidderRequest, bannerImps, BANNER_ENDPOINT_VERSION));
       }
-    }
+      if (videoImps.length > 0) {
+        reqs.push(buildRequest(validBidRequests, bidderRequest, videoImps, VIDEO_ENDPOINT_VERSION));
+      }
 
-    if (bannerImps.length > 0) {
-      reqs.push(buildRequest(validBidRequests, bidderRequest, bannerImps, BANNER_ENDPOINT_VERSION));
-    }
-    if (videoImps.length > 0) {
-      reqs.push(buildRequest(validBidRequests, bidderRequest, videoImps, VIDEO_ENDPOINT_VERSION));
-    }
-
-    return reqs;
+      return reqs;
+    }));
   },
 
   /**
