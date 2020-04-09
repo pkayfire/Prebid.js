@@ -9,6 +9,14 @@ const SYNC_ENDPOINT = 'https://static.yieldmo.com/blank.min.html?orig=';
 const SERVER_ENDPOINT = 'https://ads.yieldmo.com/exchange/prebid';
 const localWindow = getTopWindow();
 
+function chunkArrayInGroups(arr, size) {
+  var myArray = [];
+  for(var i = 0; i < arr.length; i += size) {
+    myArray.push(arr.slice(i, i+size));
+  }
+  return myArray;
+}
+
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: ['banner'],
@@ -27,41 +35,45 @@ export const spec = {
    * @return ServerRequest Info describing the request to the server.
    */
   buildRequests: function(bidRequests) {
-    let serverRequest = {
-      p: [],
-      page_url: utils.getTopWindowUrl(),
-      bust: new Date().getTime().toString(),
-      pr: utils.getTopWindowReferrer(),
-      scrd: localWindow.devicePixelRatio || 0,
-      dnt: getDNT(),
-      e: getEnvironment(),
-      description: getPageDescription(),
-      title: localWindow.document.title || '',
-      w: localWindow.innerWidth,
-      h: localWindow.innerHeight
-    };
+    let chunkedRequests = chunkArrayInGroups(bidRequests, 10);
 
-    bidRequests.forEach((request) => {
-      serverRequest.p.push(addPlacement(request));
-      const pubcid = getId(request, 'pubcid');
-      if (pubcid) {
-        serverRequest.pubcid = pubcid;
-      } else if (request.crumbs) {
-        if (request.crumbs.pubcid) {
-          serverRequest.pubcid = request.crumbs.pubcid;
+    return chunkedRequests.map(requestChunk => {
+      let serverRequest = {
+        p: [],
+        page_url: utils.getTopWindowUrl(),
+        bust: new Date().getTime().toString(),
+        pr: utils.getTopWindowReferrer(),
+        scrd: localWindow.devicePixelRatio || 0,
+        dnt: getDNT(),
+        e: getEnvironment(),
+        description: getPageDescription(),
+        title: localWindow.document.title || '',
+        w: localWindow.innerWidth,
+        h: localWindow.innerHeight
+      };
+
+      requestChunk.forEach((request) => {
+        serverRequest.p.push(addPlacement(request));
+        const pubcid = getId(request, 'pubcid');
+        if (pubcid) {
+          serverRequest.pubcid = pubcid;
+        } else if (request.crumbs) {
+          if (request.crumbs.pubcid) {
+            serverRequest.pubcid = request.crumbs.pubcid;
+          }
         }
+        const tdid = getId(request, 'tdid');
+        if (tdid) {
+          serverRequest.tdid = tdid;
+        }
+      });
+      serverRequest.p = '[' + serverRequest.p.toString() + ']';
+      return {
+        method: 'GET',
+        url: SERVER_ENDPOINT,
+        data: serverRequest
       }
-      const tdid = getId(request, 'tdid');
-      if (tdid) {
-        serverRequest.tdid = tdid;
-      }
-    });
-    serverRequest.p = '[' + serverRequest.p.toString() + ']';
-    return {
-      method: 'GET',
-      url: SERVER_ENDPOINT,
-      data: serverRequest
-    }
+    })
   },
   /**
    * Makes Yieldmo Ad Server response compatible to Prebid specs
