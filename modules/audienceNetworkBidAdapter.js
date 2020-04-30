@@ -1,12 +1,10 @@
 /**
  * @file AudienceNetwork adapter.
  */
-import { registerBidder } from '../src/adapters/bidderFactory';
-import { formatQS } from '../src/url';
-import { generateUUID, getTopWindowUrl, convertTypes } from '../src/utils';
-import findIndex from 'core-js/library/fn/array/find-index';
-import includes from 'core-js/library/fn/array/includes';
-import * as utils from '../src/utils';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { generateUUID, deepAccess, convertTypes, formatQS } from '../src/utils.js';
+import findIndex from 'core-js/library/fn/array/find-index.js';
+import includes from 'core-js/library/fn/array/includes.js';
 
 const code = 'audienceNetwork';
 const currency = 'USD';
@@ -171,12 +169,6 @@ const createAdHtml = (placementId, format, bidId) => {
 };
 
 /**
- * Get the current window location URL correctly encoded for use in a URL query string.
- * @returns {String} URI-encoded URL
- */
-const getTopWindowUrlEncoded = () => encodeURIComponent(getTopWindowUrl());
-
-/**
  * Convert each bid request to a single URL to fetch those bids.
  * @param {Array} bids - list of bids
  * @param {String} bids[].placementCode - Prebid placement identifier
@@ -188,7 +180,7 @@ const getTopWindowUrlEncoded = () => encodeURIComponent(getTopWindowUrl());
  * @param {Array} bids[].sizes[] - Size arrays [h,w]: should include one of [300, 250], [320, 50]
  * @returns {Array<Object>} List of URLs to fetch, plus formats and sizes for later use with interpretResponse
  */
-const buildRequests = bids => {
+const buildRequests = (bids, bidderRequest) => {
   // Build lists of placementids, adformats, sizes and SDK versions
   let placementids = [];
   let adformats = [];
@@ -212,10 +204,9 @@ const buildRequests = bids => {
       requestIds.push(bid.bidId);
     })
   );
-
   // Build URL
   const testmode = isTestmode();
-  const pageurl = getTopWindowUrlEncoded();
+  const pageurl = encodeURIComponent(deepAccess(bidderRequest, 'refererInfo.canonicalUrl') || deepAccess(bidderRequest, 'refererInfo.referer'));
   const platform = findPlatform(platforms);
   const cb = generateUUID();
   let search = [];
@@ -255,25 +246,7 @@ const buildRequests = bids => {
     }];
   }
 
-  // not needed until outstream video supported
-  // const video = findIndex(adformats, isVideo);
-  // if (video !== -1) {
-  //   [search.playerwidth, search.playerheight] = expandSize(sizes[video]);
-  // }
-
-  let requests = [];
-  search.forEach(function (searchChunk, index) {
-    requests.push({
-      adformats: bids.length > maxImpsPerRequest ? adformats[index] : adformats,
-      data: formatQS(searchChunk),
-      method: method,
-      requestIds: bids.length > maxImpsPerRequest ? requestIds[index] : requestIds,
-      sizes: bids.length > maxImpsPerRequest ? sizes[index] : sizes,
-      url: url
-    });
-  });
-
-  return requests;
+  return [{ adformats, data, method, requestIds, sizes, url, pageurl }];
 };
 
 /**
@@ -285,7 +258,7 @@ const buildRequests = bids => {
  * @param {Array} bidRequest.sizes - list of sizes fot the original bid requests
  * @returns {Array<Object>} A list of bid response objects
  */
-const interpretResponse = ({ body }, { adformats, requestIds, sizes }) => {
+const interpretResponse = ({ body }, { adformats, requestIds, sizes, pageurl }) => {
   const { bids = {} } = body;
   return Object.keys(bids)
     // extract Array of bid responses
@@ -324,7 +297,6 @@ const interpretResponse = ({ body }, { adformats, requestIds, sizes }) => {
       };
       // Video attributes
       if (isVideo(format)) {
-        const pageurl = getTopWindowUrlEncoded();
         bidResponse.mediaType = 'video';
         bidResponse.vastUrl = `https://an.facebook.com/v1/instream/vast.xml?placementid=${creativeId}&pageurl=${pageurl}&playerwidth=${width}&playerheight=${height}&bidid=${fbBidid}`;
         bidResponse.ttl = videoTtl;
