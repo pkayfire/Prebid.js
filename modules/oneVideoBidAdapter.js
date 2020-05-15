@@ -1,5 +1,6 @@
 import * as utils from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
+
 const BIDDER_CODE = 'oneVideo';
 export const spec = {
   code: 'oneVideo',
@@ -85,11 +86,12 @@ export const spec = {
       return [];
     }
     size = getSize(bidRequest.sizes);
+    const adId = `${utils.generateUUID()}${bid.adid}`.replace(/-/g, '');
     bidResponse = {
       requestId: bidRequest.bidId,
       bidderCode: spec.code,
       cpm: bid.price,
-      adId: bid.adid,
+      adId: adId,
       creativeId: bid.crid,
       width: size.width,
       height: size.height,
